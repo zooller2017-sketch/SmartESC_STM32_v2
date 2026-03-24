@@ -1,50 +1,44 @@
-name: C/C++ CI
+# This is a basic workflow to help you get started with Actions
 
+name: Build on commit
+
+# Controls when the workflow will run
 on:
+  # Triggers the workflow on push or pull request events but only for the vesc_comp branch
   push:
-    branches: [ "vesc_comp" ]
+    branches: [ vesc_comp ]
   pull_request:
-    branches: [ "vesc_comp" ]
-
+    branches: [ vesc_comp ]
+    
 jobs:
   build:
 
-     runs-on: ubuntu-latest
-     env:
+    runs-on: ubuntu-latest
+    env:
       # ruleid: allowed-unsecure-commands
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-        
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
 
-   
-
-     steps:
-     - uses: actions/checkout@v6
-     - name: log untrusted output
-       run: |
-
+    steps:
+    - uses: actions/checkout@v6
+    
+    - name: log untrusted output
+      run: |
         # disable command workflow processing
         echo "::stop-commands::`echo -n ${{ github.token }} | sha256sum | head -c 64`"
-
         # log untrusted output
         echo "untrusted output"
-
         # enable workflow command processing
         echo "::`echo -n ${{ github.token }} | sha256sum | head -c 64`::"
-     - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
-       uses: carlosperate/arm-none-eabi-gcc-action@v1
-       with:
-         release: '15.2.Rel1'
+        
+    - name: 'Build M365'
+      uses: docker://wsbu/stm32cubeide:latest
+      with:
+        entrypoint: /opt/stm32cubeide/stm32cubeide
+        args: --launcher.suppressErrors -nosplash -application org.eclipse.cdt.managedbuilder.core.headlessbuild -build m365/Debug -importAll /github/workspace/
     
-      
-     - uses: actions/setup-python@v6
-       with:
-         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-     - run: python tools/xiaotea/Scripts/prepareZip_online.py      
-     - name: 'Upload Artifact'
-       uses: actions/upload-artifact@v6
-       with:
-        path: ${{ github.workspace }}/tools/zip_output
-        name: M365_v3_build_${{ github.run_number }}
+    - name: 'Upload Artifact M365 - with build number'
+      uses: actions/upload-artifact@v6
+      with:
+        path: ${{ github.workspace }}/m365/STM32CubeIDE/Debug/m365.bin
+        name: ${{ github.run_number }}
         retention-days: 5
